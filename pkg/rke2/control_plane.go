@@ -102,7 +102,7 @@ func (c *ControlPlane) FailureDomains() clusterv1.FailureDomains {
 
 // Version returns the RKE2ControlPlane's version.
 func (c *ControlPlane) Version() *string {
-	return &c.RCP.Spec.Version
+	return &c.RCP.Spec.AgentConfig.Version
 }
 
 // InfrastructureTemplate returns the RKE2ControlPlane's infrastructure template.
@@ -169,14 +169,14 @@ func (c *ControlPlane) NextFailureDomainForScaleUp() *string {
 }
 
 // InitialControlPlaneConfig returns a new RKE2ConfigSpec that is to be used for an initializing control plane.
-func (c *ControlPlane) InitialControlPlaneConfig() *bootstrapv1.RKE2AgentConfig {
-	bootstrapSpec := c.RCP.Spec.RKE2AgentConfig.DeepCopy()
+func (c *ControlPlane) InitialControlPlaneConfig() *bootstrapv1.RKE2ConfigSpec {
+	bootstrapSpec := c.RCP.Spec.RKE2ConfigSpec.DeepCopy()
 	return bootstrapSpec
 }
 
 // JoinControlPlaneConfig returns a new RKE2ConfigSpec that is to be used for joining control planes.
-func (c *ControlPlane) JoinControlPlaneConfig() *bootstrapv1.RKE2AgentConfig {
-	bootstrapSpec := c.RCP.Spec.RKE2AgentConfig.DeepCopy()
+func (c *ControlPlane) JoinControlPlaneConfig() *bootstrapv1.RKE2ConfigSpec {
+	bootstrapSpec := c.RCP.Spec.RKE2ConfigSpec.DeepCopy()
 	return bootstrapSpec
 }
 

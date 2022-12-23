@@ -188,7 +188,7 @@ func (in *RKE2ControlPlaneSpec) DeepCopyInto(out *RKE2ControlPlaneSpec) {
 		*out = new(int32)
 		**out = **in
 	}
-	in.RKE2AgentConfig.DeepCopyInto(&out.RKE2AgentConfig)
+	in.RKE2ConfigSpec.DeepCopyInto(&out.RKE2ConfigSpec)
 	in.ServerConfig.DeepCopyInto(&out.ServerConfig)
 	out.ManifestsConfigMapReference = in.ManifestsConfigMapReference
 	out.InfrastructureRef = in.InfrastructureRef

@@ -23,9 +23,11 @@ var rcp = controlplanev1.RKE2ControlPlane{
 			CloudProviderName: "aws",
 			ClusterDomain:     "example.com",
 		},
-		RKE2AgentConfig: bootstrapv1.RKE2AgentConfig{
-			Version:    "v1.24.6+rke2r1",
-			NodeLabels: []string{"hello=world"},
+		RKE2ConfigSpec: bootstrapv1.RKE2ConfigSpec{
+			AgentConfig: bootstrapv1.RKE2AgentConfig{
+				Version:    "v1.24.6+rke2r1",
+				NodeLabels: []string{"hello=world"},
+			},
 		},
 	},
 }

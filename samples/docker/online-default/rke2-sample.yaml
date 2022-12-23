@@ -12,7 +12,10 @@ spec:
   clusterNetwork:
     pods:
       cidrBlocks:
-      - 192.168.0.0/16
+      - 10.45.0.0/16
+    services:
+      cidrBlocks:
+      - 10.46.0.0/16
     serviceDomain: cluster.local
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
@@ -36,7 +39,8 @@ metadata:
   namespace: ${CABPR_NAMESPACE}
 spec: 
   replicas: ${CABPR_CP_REPLICAS}
-  version: ${KUBERNETES_VERSION}+rke2r1
+  agentConfig:
+    version: ${KUBERNETES_VERSION}+rke2r1
   infrastructureRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
     kind: DockerMachineTemplate

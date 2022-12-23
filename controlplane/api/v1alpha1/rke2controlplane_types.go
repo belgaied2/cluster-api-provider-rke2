@@ -37,7 +37,7 @@ type RKE2ControlPlaneSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 
 	// RKE2AgentConfig references fields from the Agent Configuration in the Bootstrap Provider because an RKE2 Server node also has an agent
-	bootstrapv1.RKE2AgentConfig `json:",inline"`
+	bootstrapv1.RKE2ConfigSpec `json:",inline"`
 
 	// ServerConfig specifies configuration for the agent nodes.
 	//+optional

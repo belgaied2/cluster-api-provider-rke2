@@ -314,9 +314,9 @@ type TLSConfig struct {
 	// +optional
 	TLSConfigSecret corev1.ObjectReference `json:"tlsConfigSecret,omitempty"`
 
-	// EnforceSSLVerify may be set to false to skip verifying the registry's certificate, default is true.
+	// InsecureSkipVerify may be set to false to skip verifying the registry's certificate, default is true.
 	//+optional
-	EnforceSSLVerify bool `json:"enforceSslVerify,omitempty"`
+	InsecureSkipVerify bool `json:"enforceSSLVerify,omitempty"`
 }
 
 type ComponentConfig struct {

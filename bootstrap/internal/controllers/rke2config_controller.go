@@ -287,7 +287,7 @@ func (r *RKE2ConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	}
 	scope.Logger.Info("RKE2 server token generated and stored in Secret!")
 
-	configStruct, files, err := rke2.GenerateInitControlPlaneConfig(
+	configStruct, configFiles, err := rke2.GenerateInitControlPlaneConfig(
 		rke2.RKE2ServerConfigOpts{
 			ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 			Token:                token,
@@ -316,7 +316,10 @@ func (r *RKE2ConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		Permissions: filePermissions,
 	}
 
-	// TODO: Implement adding additional files through API
+	files, err := r.generateFileListIncludingRegistries(scope, ctx, configFiles)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	cpinput := &cloudinit.ControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -342,6 +345,39 @@ func (r *RKE2ConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 	return ctrl.Result{}, nil
 }
 
+func (r *RKE2ConfigReconciler) generateFileListIncludingRegistries(scope *Scope, ctx context.Context, configFiles []bootstrapv1.File) ([]bootstrapv1.File, error) {
+	registries, registryFiles, err := rke2.GenerateRegistries(rke2.RKE2ConfigRegistry{
+		Registry: scope.Config.Spec.PrivateRegistriesConfig,
+		Client:   r.Client,
+		Ctx:      ctx,
+		Logger:   scope.Logger,
+	})
+
+	if err != nil {
+		scope.Logger.Error(err, "unable to generate registries.yaml for Init Control Plane node")
+		return nil, err
+	}
+
+	registriesYAML, err := kubeyaml.Marshal(registries)
+	if err != nil {
+		scope.Logger.Error(err, "unable to marshall registries.yaml")
+		return nil, err
+	}
+	scope.Logger.Info("Registries.yaml marshalled successfully")
+
+	initRegistriesFile := bootstrapv1.File{
+		Path:        rke2.DefaultRKE2RegistriesLocation,
+		Content:     string(registriesYAML),
+		Owner:       "root:root",
+		Permissions: "0640",
+	}
+
+	files := append(configFiles, registryFiles...)
+	files = append(files, initRegistriesFile)
+	files = append(files, scope.Config.Spec.Files...)
+	return files, nil
+}
+
 type RKE2InitLock interface {
 	Unlock(ctx context.Context, cluster *clusterv1.Cluster) bool
 	Lock(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) bool
@@ -360,7 +396,7 @@ func (r *RKE2ConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	scope.Logger.Info("RKE2 server token found in Secret!")
 
-	configStruct, files, err := rke2.GenerateJoinControlPlaneConfig(
+	configStruct, configFiles, err := rke2.GenerateJoinControlPlaneConfig(
 		rke2.RKE2ServerConfigOpts{
 			Cluster:              *scope.Cluster,
 			Token:                token,
@@ -394,7 +430,11 @@ func (r *RKE2ConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 		Permissions: filePermissions,
 	}
 
-	// TODO: Implement adding additional files through API, coming in future PR
+	files, err := r.generateFileListIncludingRegistries(scope, ctx, configFiles)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// TODO: Implement adding additional files through API
 
 	cpinput := &cloudinit.ControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
@@ -429,7 +469,7 @@ func (r *RKE2ConfigReconciler) joinWorker(ctx context.Context, scope *Scope) (re
 	token := string(tokenSecret.Data["value"])
 	scope.Logger.Info("RKE2 server token found in Secret!")
 
-	configStruct, files, err := rke2.GenerateWorkerConfig(
+	configStruct, configFiles, err := rke2.GenerateWorkerConfig(
 		rke2.RKE2AgentConfigOpts{
 			ServerURL:   fmt.Sprintf(serverURLFormat, scope.Cluster.Spec.ControlPlaneEndpoint.Host, registrationPort),
 			Token:       token,
@@ -456,6 +496,10 @@ func (r *RKE2ConfigReconciler) joinWorker(ctx context.Context, scope *Scope) (re
 		Permissions: filePermissions,
 	}
 
+	files, err := r.generateFileListIncludingRegistries(scope, ctx, configFiles)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	// TODO: Implement adding additional files through API
 
 	wkInput :=

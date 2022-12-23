@@ -243,7 +243,7 @@ func selectMachineForScaleDown(controlPlane *rke2.ControlPlane, outdatedMachines
 	return controlPlane.MachineInFailureDomainWithMostMachines(machines)
 }
 
-func (r *RKE2ControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.Context, cluster *clusterv1.Cluster, rcp *controlplanev1.RKE2ControlPlane, bootstrapSpec *bootstrapv1.RKE2AgentConfig, failureDomain *string) error {
+func (r *RKE2ControlPlaneReconciler) cloneConfigsAndGenerateMachine(ctx context.Context, cluster *clusterv1.Cluster, rcp *controlplanev1.RKE2ControlPlane, bootstrapSpec *bootstrapv1.RKE2ConfigSpec, failureDomain *string) error {
 	var errs []error
 
 	// Since the cloned resource should eventually have a controller ref for the Machine, we create an
@@ -314,7 +314,7 @@ func (r *RKE2ControlPlaneReconciler) cleanupFromGeneration(ctx context.Context, 
 	return kerrors.NewAggregate(errs)
 }
 
-func (r *RKE2ControlPlaneReconciler) generateRKE2Config(ctx context.Context, rcp *controlplanev1.RKE2ControlPlane, cluster *clusterv1.Cluster, spec *bootstrapv1.RKE2AgentConfig) (*corev1.ObjectReference, error) {
+func (r *RKE2ControlPlaneReconciler) generateRKE2Config(ctx context.Context, rcp *controlplanev1.RKE2ControlPlane, cluster *clusterv1.Cluster, spec *bootstrapv1.RKE2ConfigSpec) (*corev1.ObjectReference, error) {
 	// Create an owner reference without a controller reference because the owning controller is the machine controller
 	owner := metav1.OwnerReference{
 		APIVersion: controlplanev1.GroupVersion.String(),
@@ -330,9 +330,7 @@ func (r *RKE2ControlPlaneReconciler) generateRKE2Config(ctx context.Context, rcp
 			Labels:          rke2.ControlPlaneLabelsForCluster(cluster.Name),
 			OwnerReferences: []metav1.OwnerReference{owner},
 		},
-		Spec: bootstrapv1.RKE2ConfigSpec{
-			AgentConfig: *spec,
-		},
+		Spec: *spec,
 	}
 
 	if err := r.Client.Create(ctx, bootstrapConfig); err != nil {
@@ -351,10 +349,9 @@ func (r *RKE2ControlPlaneReconciler) generateRKE2Config(ctx context.Context, rcp
 }
 
 func (r *RKE2ControlPlaneReconciler) generateMachine(ctx context.Context, rcp *controlplanev1.RKE2ControlPlane, cluster *clusterv1.Cluster, infraRef, bootstrapRef *corev1.ObjectReference, failureDomain *string) error {
-	newVersion, err := bsutil.Rke2ToKubeVersion(rcp.Spec.Version)
-
+	newVersion, err := bsutil.Rke2ToKubeVersion(rcp.Spec.AgentConfig.Version)
 	logger := log.FromContext(ctx)
-	logger.Info("Version checking...", "rke2-version", rcp.Spec.Version, "machine-version: ", newVersion)
+	logger.Info("Version checking...", "rke2-version", rcp.Spec.AgentConfig.Version, "machine-version: ", newVersion)
 	if err != nil {
 		return err
 	}

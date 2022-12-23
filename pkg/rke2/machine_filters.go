@@ -15,7 +15,7 @@ import (
 // Kubernetes version, infrastructure template, and RKE2Config field need to be equivalent.
 func matchesRCPConfiguration(infraConfigs map[string]*unstructured.Unstructured, machineConfigs map[string]*bootstrapv1.RKE2Config, rcp *controlplanev1.RKE2ControlPlane) func(machine *clusterv1.Machine) bool {
 	return collections.And(
-		collections.MatchesKubernetesVersion(rcp.Spec.Version),
+		collections.MatchesKubernetesVersion(rcp.Spec.AgentConfig.Version),
 		matchesRKE2BootstrapConfig(machineConfigs, rcp),
 		matchesTemplateClonedFrom(infraConfigs, rcp),
 	)
@@ -49,7 +49,7 @@ func matchesRKE2BootstrapConfig(machineConfigs map[string]*bootstrapv1.RKE2Confi
 		}
 
 		// Check if RCP AgentConfig and machineBootstrapConfig matches
-		return reflect.DeepEqual(machineConfig.Spec.AgentConfig, rcp.Spec.RKE2AgentConfig)
+		return reflect.DeepEqual(machineConfig.Spec.AgentConfig, rcp.Spec.AgentConfig)
 	}
 }
 

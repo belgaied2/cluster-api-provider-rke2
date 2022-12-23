@@ -75,7 +75,6 @@ type BaseUserData struct {
 	PreRKE2Commands     []string
 	DeployRKE2Commands  []string
 	PostRKE2Commands    []string
-	AdditionalFiles     []bootstrapv1.File
 	WriteFiles          []bootstrapv1.File
 	ConfigFile          bootstrapv1.File
 	RKE2Version         string
