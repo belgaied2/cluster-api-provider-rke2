@@ -64,6 +64,10 @@ type RKE2ConfigReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+const (
+	DefaultManifestDirectory string = "/var/lib/rancher/rke2/server/manifests"
+)
+
 //+kubebuilder:rbac:groups=bootstrap.cluster.x-k8s.io,resources=rke2configs;rke2configs/status;rke2configs/finalizers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=controlplane.cluster.x-k8s.io,resources=rke2controlplanes;rke2controlplanes/status,verbs=get;list;watch
 //+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status;machinesets;machines;machines/status;machinepools;machinepools/status,verbs=get;list;watch
@@ -321,6 +325,18 @@ func (r *RKE2ConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 		return ctrl.Result{}, err
 	}
 
+	manifestFiles, err := generateFilesFromManifestConfig(ctx, r.Client, scope.ControlPlane.Spec.ManifestsConfigMapReference)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			scope.Logger.Error(err, "ConfigMap referenced by manifestsConfigMapReference not found!")
+			return ctrl.Result{}, err
+		}
+		scope.Logger.Error(err, "Problem when getting ConfigMap referenced by manifestsConfigMapReference")
+		return ctrl.Result{}, err
+	}
+
+	files = append(files, manifestFiles...)
+
 	cpinput := &cloudinit.ControlPlaneInput{
 		BaseUserData: cloudinit.BaseUserData{
 			AirGapped:        scope.Config.Spec.AgentConfig.AirGapped,
@@ -434,6 +450,18 @@ func (r *RKE2ConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
+	manifestFiles, err := generateFilesFromManifestConfig(ctx, r.Client, scope.ControlPlane.Spec.ManifestsConfigMapReference)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			scope.Logger.Error(err, "ConfigMap referenced by manifestsConfigMapReference not found!")
+			return ctrl.Result{}, err
+		}
+		scope.Logger.Error(err, "Problem when getting ConfigMap referenced by manifestsConfigMapReference")
+		return ctrl.Result{}, err
+	}
+
+	files = append(files, manifestFiles...)
 	// TODO: Implement adding additional files through API
 
 	cpinput := &cloudinit.ControlPlaneInput{
@@ -607,6 +635,27 @@ func (r *RKE2ConfigReconciler) createOrUpdateSecretFromObject(secret corev1.Secr
 		if err := r.Client.Update(ctx, &secret); err != nil {
 			return errors.Wrapf(err, "failed to update %s secret for %s: %s/%s", secretType, config.Kind, config.Namespace, config.Name)
 		}
+	}
+	return
+}
+
+func generateFilesFromManifestConfig(ctx context.Context, cl client.Client, manifestConfigMap corev1.ObjectReference) (files []bootstrapv1.File, err error) {
+	manifestSec := &corev1.ConfigMap{}
+
+	err = cl.Get(ctx, types.NamespacedName{
+		Namespace: manifestConfigMap.Namespace,
+		Name:      manifestSec.Name,
+	}, manifestSec)
+
+	if err != nil {
+		return
+	}
+
+	for filename, content := range manifestSec.Data {
+		files = append(files, bootstrapv1.File{
+			Path:    DefaultManifestDirectory + "/" + filename,
+			Content: string(content),
+		})
 	}
 	return
 }
