@@ -310,6 +310,22 @@ func (r *RKE2ControlPlaneReconciler) updateStatus(ctx context.Context, rcp *cont
 		rcp.Status.Initialized = true
 	}
 
+	availableCPMachines := readyMachines.Filter(collections.Not(collections.HasUnhealthyCondition))
+	validIpAddresses := []string{}
+	for _, machine := range availableCPMachines {
+		ipAddress, err := getIPAddress(*machine)
+		if err != nil {
+			break
+		}
+		if !conditions.IsFalse(machine, clusterv1.MachineNodeHealthyCondition) {
+			validIpAddresses = append(validIpAddresses, ipAddress)
+		}
+	}
+	rcp.Status.AvailableServerIPs = validIpAddresses
+	if len(rcp.Status.AvailableServerIPs) == 0 {
+		return fmt.Errorf("some Control Plane machines exist and are ready but they have no IP Address available")
+	}
+
 	if len(readyMachines) == len(ownedMachines) {
 		rcp.Status.Ready = true
 	}
@@ -605,4 +621,26 @@ func (r *RKE2ControlPlaneReconciler) ClusterToRKE2ControlPlane(o client.Object) 
 	}
 
 	return nil
+}
+
+func getIPAddress(machine clusterv1.Machine) (ip string, err error) {
+
+	for _, address := range machine.Status.Addresses {
+		switch address.Type {
+		case "InternalIP":
+			if address.Address != "" {
+				return address.Address, nil
+			}
+		case "ExternalIP":
+			if address.Address != "" {
+				ip = address.Address
+			}
+		}
+	}
+
+	if ip == "" {
+		err = fmt.Errorf("no IP Address found for machine: %s", machine.Name)
+	}
+
+	return
 }

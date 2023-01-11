@@ -91,3 +91,11 @@ var _ = Describe("matchAgentConfig", func() {
 	},
 	)
 })
+
+var _ = Describe("maching Kubernetes Version", func() {
+	It("should match version", func() {
+		machineCollection := collections.FromMachines(&machine)
+		matches := machineCollection.AnyFilter(matchesKubernetesVersion(rcp.Spec.AgentConfig.Version))
+		Expect(len(matches)).To(Equal(1))
+	})
+})

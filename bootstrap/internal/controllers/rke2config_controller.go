@@ -219,6 +219,16 @@ func (r *RKE2ConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// It's a worker join
+	// GetTheControlPlane for the worker
+	wkControlPlane := controlplanev1.RKE2ControlPlane{}
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Namespace: scope.Cluster.Spec.ControlPlaneRef.Namespace,
+		Name:      scope.Cluster.Spec.ControlPlaneRef.Name,
+	}, &wkControlPlane)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, errors.Wrapf(err, "unable to find control plane object for owning Cluster")
+	}
+	scope.ControlPlane = &wkControlPlane
 	return r.joinWorker(ctx, scope)
 	// if machine.Status.Phase != string(clusterv1.MachinePhasePending) {
 	// 	logger.Info("Machine is not in pending state")
@@ -293,6 +303,7 @@ func (r *RKE2ConfigReconciler) handleClusterNotInitialized(ctx context.Context, 
 
 	configStruct, configFiles, err := rke2.GenerateInitControlPlaneConfig(
 		rke2.RKE2ServerConfigOpts{
+			Cluster:              *scope.Cluster,
 			ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
 			Token:                token,
 			ServerURL:            fmt.Sprintf(serverURLFormat, scope.Cluster.Spec.ControlPlaneEndpoint.Host, registrationPort),
@@ -412,12 +423,17 @@ func (r *RKE2ConfigReconciler) joinControlplane(ctx context.Context, scope *Scop
 
 	scope.Logger.Info("RKE2 server token found in Secret!")
 
+	if len(scope.ControlPlane.Status.AvailableServerIPs) == 0 {
+		scope.Logger.V(3).Info("No ControlPlane IP Address found for node registration")
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
 	configStruct, configFiles, err := rke2.GenerateJoinControlPlaneConfig(
 		rke2.RKE2ServerConfigOpts{
 			Cluster:              *scope.Cluster,
 			Token:                token,
 			ControlPlaneEndpoint: scope.Cluster.Spec.ControlPlaneEndpoint.Host,
-			ServerURL:            fmt.Sprintf(serverURLFormat, scope.Cluster.Spec.ControlPlaneEndpoint.Host, registrationPort),
+			ServerURL:            fmt.Sprintf(serverURLFormat, scope.ControlPlane.Status.AvailableServerIPs[0], registrationPort),
 			ServerConfig:         scope.ControlPlane.Spec.ServerConfig,
 			AgentConfig:          scope.Config.Spec.AgentConfig,
 			Ctx:                  ctx,
@@ -497,13 +513,20 @@ func (r *RKE2ConfigReconciler) joinWorker(ctx context.Context, scope *Scope) (re
 	token := string(tokenSecret.Data["value"])
 	scope.Logger.Info("RKE2 server token found in Secret!")
 
+	if len(scope.ControlPlane.Status.AvailableServerIPs) == 0 {
+		scope.Logger.V(3).Info("No ControlPlane IP Address found for node registration")
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
 	configStruct, configFiles, err := rke2.GenerateWorkerConfig(
 		rke2.RKE2AgentConfigOpts{
-			ServerURL:   fmt.Sprintf(serverURLFormat, scope.Cluster.Spec.ControlPlaneEndpoint.Host, registrationPort),
-			Token:       token,
-			AgentConfig: scope.Config.Spec.AgentConfig,
-			Ctx:         ctx,
-			Client:      r.Client,
+			ServerURL:              fmt.Sprintf(serverURLFormat, scope.ControlPlane.Status.AvailableServerIPs[0], registrationPort),
+			Token:                  token,
+			AgentConfig:            scope.Config.Spec.AgentConfig,
+			Ctx:                    ctx,
+			Client:                 r.Client,
+			CloudProviderName:      scope.ControlPlane.Spec.ServerConfig.CloudProviderName,
+			CloudProviderConfigMap: scope.ControlPlane.Spec.ServerConfig.CloudProviderConfigMap,
 		})
 
 	if err != nil {
@@ -640,11 +663,15 @@ func (r *RKE2ConfigReconciler) createOrUpdateSecretFromObject(secret corev1.Secr
 }
 
 func generateFilesFromManifestConfig(ctx context.Context, cl client.Client, manifestConfigMap corev1.ObjectReference) (files []bootstrapv1.File, err error) {
+	if (manifestConfigMap == corev1.ObjectReference{}) {
+		return []bootstrapv1.File{}, nil
+	}
+
 	manifestSec := &corev1.ConfigMap{}
 
 	err = cl.Get(ctx, types.NamespacedName{
 		Namespace: manifestConfigMap.Namespace,
-		Name:      manifestSec.Name,
+		Name:      manifestConfigMap.Name,
 	}, manifestSec)
 
 	if err != nil {

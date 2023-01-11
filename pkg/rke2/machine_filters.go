@@ -4,18 +4,20 @@ import (
 	"encoding/json"
 	"reflect"
 
-	bootstrapv1 "github.com/rancher-sandbox/cluster-api-provider-rke2/bootstrap/api/v1alpha1"
-	controlplanev1 "github.com/rancher-sandbox/cluster-api-provider-rke2/controlplane/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/collections"
+
+	bootstrapv1 "github.com/rancher-sandbox/cluster-api-provider-rke2/bootstrap/api/v1alpha1"
+	controlplanev1 "github.com/rancher-sandbox/cluster-api-provider-rke2/controlplane/api/v1alpha1"
+	bsutil "github.com/rancher-sandbox/cluster-api-provider-rke2/pkg/util"
 )
 
 // matchesRCPConfiguration returns a filter to find all machines that matches with RCP config and do not require any rollout.
 // Kubernetes version, infrastructure template, and RKE2Config field need to be equivalent.
 func matchesRCPConfiguration(infraConfigs map[string]*unstructured.Unstructured, machineConfigs map[string]*bootstrapv1.RKE2Config, rcp *controlplanev1.RKE2ControlPlane) func(machine *clusterv1.Machine) bool {
 	return collections.And(
-		collections.MatchesKubernetesVersion(rcp.Spec.AgentConfig.Version),
+		matchesKubernetesVersion(rcp.Spec.AgentConfig.Version),
 		matchesRKE2BootstrapConfig(machineConfigs, rcp),
 		matchesTemplateClonedFrom(infraConfigs, rcp),
 	)
@@ -109,5 +111,23 @@ func matchesTemplateClonedFrom(infraConfigs map[string]*unstructured.Unstructure
 			return false
 		}
 		return true
+	}
+}
+
+// matchesKubernetesVersion returns a filter to find all machines that match a given Kubernetes version.
+func matchesKubernetesVersion(kubernetesVersion string) func(*clusterv1.Machine) bool {
+	return func(machine *clusterv1.Machine) bool {
+		if machine == nil {
+			return false
+		}
+		if machine.Spec.Version == nil {
+			return false
+		}
+
+		rcpKubeVersion, err := bsutil.Rke2ToKubeVersion(kubernetesVersion)
+		if err != nil {
+			return true
+		}
+		return bsutil.CompareVersions(*machine.Spec.Version, rcpKubeVersion)
 	}
 }

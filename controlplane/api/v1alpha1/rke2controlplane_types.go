@@ -169,6 +169,10 @@ type RKE2ControlPlaneStatus struct {
 
 	// UnavailableReplicas is the number of replicas current attached to this ControlPlane Resource and that are up-to-date with Control Plane config
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
+
+	// AvailableServerIPs is the ip address of the initial Control Plane node that is used to register all subsequent nodes
+	// +optional
+	AvailableServerIPs []string `json:"availableServerIPs,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -35,52 +35,13 @@ spec:
           spec:
             description: RKE2ControlPlaneSpec defines the desired state of RKE2ControlPlane
             properties:
-<<<<<<< HEAD
-              airGapped:
-                description: AirGapped is a boolean value to define if the bootstrapping
-                  should be air-gapped, basically supposing that online container
-                  registries and RKE2 install scripts are not reachable.
-                type: boolean
-              cisProfile:
-                description: CISProfile activates CIS compliance of RKE2 for a certain
-                  profile
-                enum:
-                - cis-1.23
-                type: string
-              containerRuntimeEndpoint:
-                description: ContainerRuntimeEndpoint Disable embedded containerd
-                  and use alternative CRI implementation.
-                type: string
-              dataDir:
-                description: DataDir Folder to hold state.
-                type: string
-              enableContainerdSElinux:
-                description: EnableContainerdSElinux defines the policy for enabling
-                  SELinux for Containerd if value is true, Containerd will run with
-                  selinux-enabled=true flag if value is false, Containerd will run
-                  without the above flag
-                type: boolean
-              imageCredentialProviderConfigMap:
-                description: ImageCredentialProviderConfigMap is a reference to the
-                  ConfigMap that contains credential provider plugin config The config
-                  map should contain a key "credential-config.yaml" with YAML file
-                  content and a key "credential-provider-binaries" with the a path
-                  to the binaries for the credential provider.
-=======
               agentConfig:
                 description: AgentConfig specifies configuration for the agent nodes.
->>>>>>> 1c3cb65 (implemented registries.yaml files for workers, cp might be problematic in this impl)
                 properties:
                   airGapped:
-                    description: 'AirGapped is a boolean value to define if the bootstrapping
+                    description: AirGapped is a boolean value to define if the bootstrapping
                       should be air-gapped, basically supposing that online container
-                      registries and RKE2 install scripts are not reachable. NOTE:
-                      Make sure when using this option that you are using a custom
-                      machine image in the InfraMachineTemplates, this image needs
-                      to contain the necessary RKE2 files which are: - install.sh
-                      - rke2-images.linux-amd64.tar.zst - rke2.linux-amd64.tar.gz
-                      - sha256sum-amd64.txt from the RKE2 release page, these files
-                      should be the same as the ones from RKE2AgentConfig'
+                      registries and RKE2 install scripts are not reachable.
                     type: boolean
                   cisProfile:
                     description: CISProfile activates CIS compliance of RKE2 for a
@@ -1038,6 +999,12 @@ spec:
           status:
             description: RKE2ControlPlaneStatus defines the observed state of RKE2ControlPlane
             properties:
+              availableServerIPs:
+                description: AvailableServerIPs is the ip address of the initial Control
+                  Plane node that is used to register all subsequent nodes
+                items:
+                  type: string
+                type: array
               conditions:
                 description: Conditions defines current service state of the RKE2Config.
                 items:

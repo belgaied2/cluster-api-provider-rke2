@@ -96,3 +96,29 @@ func Rke2ToKubeVersion(rk2Version string) (kubeVersion string, err error) {
 
 	return kubeVersion, nil
 }
+
+// AppendIfNotPresent appends a string to a slice only if the value does not already exist
+func AppendIfNotPresent(origSlice []string, strItem string) (resultSlice []string) {
+	present := false
+	for _, item := range origSlice {
+		if item == strItem {
+			present = true
+		}
+	}
+	if !present {
+		return append(origSlice, strItem)
+	}
+	return origSlice
+}
+
+// CompareVersions compares two string version supposing those would begin with 'v' or not
+func CompareVersions(v1 string, v2 string) bool {
+	if string(v1[0]) != "v" {
+		v1 = "v" + v1
+	}
+
+	if string(v2[0]) != "v" {
+		v2 = "v" + v2
+	}
+	return v1 == v2
+}
