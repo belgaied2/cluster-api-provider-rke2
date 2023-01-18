@@ -23,7 +23,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	controlplanev1 "github.com/rancher-sandbox/cluster-api-provider-rke2/controlplane/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,12 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	"sigs.k8s.io/cluster-api/util"
-	"sigs.k8s.io/cluster-api/util/annotations"
-	"sigs.k8s.io/cluster-api/util/collections"
-	"sigs.k8s.io/cluster-api/util/conditions"
-	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -45,6 +38,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/annotations"
+	"sigs.k8s.io/cluster-api/util/collections"
+	"sigs.k8s.io/cluster-api/util/conditions"
+	"sigs.k8s.io/cluster-api/util/patch"
+
+	controlplanev1 "github.com/rancher-sandbox/cluster-api-provider-rke2/controlplane/api/v1alpha1"
 	"github.com/rancher-sandbox/cluster-api-provider-rke2/pkg/kubeconfig"
 	"github.com/rancher-sandbox/cluster-api-provider-rke2/pkg/rke2"
 	"github.com/rancher-sandbox/cluster-api-provider-rke2/pkg/secret"
@@ -483,27 +484,7 @@ func (r *RKE2ControlPlaneReconciler) reconcileDelete(ctx context.Context, cluste
 	return ctrl.Result{RequeueAfter: deleteRequeueAfter}, nil
 }
 
-// 	// TODO: Improve this part once there are dependencies on the Control Plane Object!
-// 	var ok bool = true
-// 	for _, finalizer := range rcp.GetObjectMeta().GetFinalizers() {
-// 		if ok {
-// 			ok = controllerutil.RemoveFinalizer(rcp, finalizer)
-// 		}
-// 	}
-// 	if !ok {
-// 		logger.Info("unable to remove all finalizers")
-// 		err = fmt.Errorf("unable to remove all finalizers")
-// 		res = ctrl.Result{}
-// 		return
-// 	}
-
-// 	if err = r.Delete(ctx, rcp); err != nil {
-// 		res = ctrl.Result{RequeueAfter: 2 * time.Minute}
-// 		return
-// 	}
-
-// 	return ctrl.Result{}, nil
-// }
+// 	TODO: Improve this part once there are dependencies on the Control Plane Object!
 
 func (r *RKE2ControlPlaneReconciler) reconcileKubeconfig(
 	ctx context.Context,
@@ -511,7 +492,9 @@ func (r *RKE2ControlPlaneReconciler) reconcileKubeconfig(
 	endpoint clusterv1.APIEndpoint,
 	rcp *controlplanev1.RKE2ControlPlane) (ctrl.Result, error) {
 
+	logger := ctrl.LoggerFrom(ctx)
 	if endpoint.IsZero() {
+		logger.V(5).Info("API Endpoint not yet known")
 		return ctrl.Result{}, nil
 	}
 

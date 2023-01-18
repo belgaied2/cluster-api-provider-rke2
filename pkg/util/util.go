@@ -42,7 +42,7 @@ func GetOwnerControlPlane(ctx context.Context, c client.Client, obj metav1.Objec
 		}
 	}
 
-	logger.Info("GetOwnerControlPlane result:", "cpOwnerRef", cpOwnerRef)
+	logger.V(5).Info("GetOwnerControlPlane result:", "cpOwnerRef", cpOwnerRef)
 	if (cpOwnerRef != metav1.OwnerReference{}) {
 		return GetControlPlaneByName(ctx, c, obj.Namespace, cpOwnerRef.Name)
 	}
