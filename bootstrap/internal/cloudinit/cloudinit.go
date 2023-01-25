@@ -67,6 +67,16 @@ write_files:{{ range . }}
 {{- end -}}
 `
 	sentinelFileCommand = `echo success > /run/cluster-api/bootstrap-success.complete`
+
+	ntpTemplate = `{{ define "ntp" -}}{{ if . -}}
+	ntp:
+  enabled: true
+  servers:{{ range .}}
+  - {{printf "%q" .}}
+    {{- end -}}	
+{{- end -}}
+{{- end -}}
+`
 )
 
 // BaseUserData is shared across all the various types of files written to disk.
@@ -80,6 +90,7 @@ type BaseUserData struct {
 	RKE2Version         string
 	SentinelFileCommand string
 	AirGapped           bool
+	NTPServers          []string
 }
 
 func generate(kind string, tpl string, data interface{}) ([]byte, error) {
@@ -90,6 +101,10 @@ func generate(kind string, tpl string, data interface{}) ([]byte, error) {
 
 	if _, err := tm.Parse(commandsTemplate); err != nil {
 		return nil, errors.Wrap(err, "failed to parse commands template")
+	}
+
+	if _, err := tm.Parse(ntpTemplate); err != nil {
+		return nil, errors.Wrap(err, "failed to parse ntp template")
 	}
 
 	t, err := tm.Parse(tpl)
