@@ -16,9 +16,7 @@ limitations under the License.
 
 package cloudinit
 
-import (
-	"fmt"
-)
+import "fmt"
 
 const (
 	workerCloudInit = `{{.Header}}
@@ -26,7 +24,7 @@ const (
 {{template "ntp" .NTPServers}}
 runcmd:
 {{- template "commands" .PreRKE2Commands }}
-  - '{{ if .AirGapped }}INSTALL_RKE2_ARTIFACT_PATH=/opt/rke2-artifacts INSTALL_RKE2_TYPE="agent" sh /opt/install.sh{{ else }}curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=%[1]s INSTALL_RKE2_TYPE="agent" sh -s -{{end}}'
+  - '{{ .RKE2Command }}'
   - 'systemctl enable rke2-agent.service'
   - 'systemctl start rke2-agent.service'
   - 'mkdir /run/cluster-api' 
@@ -40,7 +38,12 @@ func NewJoinWorker(input *BaseUserData) ([]byte, error) {
 	input.Header = cloudConfigHeader
 	input.WriteFiles = append(input.WriteFiles, input.ConfigFile)
 	input.SentinelFileCommand = sentinelFileCommand
-	workerCloudJoinWithVersion := fmt.Sprintf(workerCloudInit, input.RKE2Version)
+	if input.AirGapped {
+		input.RKE2Command = "INSTALL_RKE2_ARTIFACT_PATH=/opt/rke2-artifacts INSTALL_RKE2_TYPE=\"agent\" sh /opt/install.sh"
+	} else {
+		input.RKE2Command = fmt.Sprintf("curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=%[1]s INSTALL_RKE2_TYPE=\"agent\" sh -s -", input.RKE2Version)
+	}
+	workerCloudJoinWithVersion := workerCloudInit
 	userData, err := generate("JoinWorker", workerCloudJoinWithVersion, input)
 	if err != nil {
 		return nil, err

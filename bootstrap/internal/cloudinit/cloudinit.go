@@ -88,6 +88,7 @@ type BaseUserData struct {
 	WriteFiles          []bootstrapv1.File
 	ConfigFile          bootstrapv1.File
 	RKE2Version         string
+	RKE2Command         string
 	SentinelFileCommand string
 	AirGapped           bool
 	NTPServers          []string

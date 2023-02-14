@@ -16,16 +16,19 @@ limitations under the License.
 
 package cloudinit
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // NewInitControlPlane returns the user data string to be used on a controlplane instance.
 func NewJoinControlPlane(input *ControlPlaneInput) ([]byte, error) {
 	input.Header = cloudConfigHeader
 	input.WriteFiles = append(input.WriteFiles, input.ConfigFile)
 	input.SentinelFileCommand = sentinelFileCommand
-	controlPlaneCloudJoinWithVersion := fmt.Sprintf(controlPlaneCloudInit, input.RKE2Version)
+	if input.AirGapped {
+		input.RKE2Command = "INSTALL_RKE2_ARTIFACT_PATH=/opt/rke2-artifacts INSTALL_RKE2_TYPE=\"server\" sh /opt/install.sh"
+	} else {
+		input.RKE2Command = fmt.Sprintf("curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=%[1]s INSTALL_RKE2_TYPE=\"server\" sh -s -", input.RKE2Version)
+	}
+	controlPlaneCloudJoinWithVersion := controlPlaneCloudInit
 	userData, err := generate("JoinControlplane", controlPlaneCloudJoinWithVersion, input)
 	if err != nil {
 		return nil, err

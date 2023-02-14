@@ -28,7 +28,7 @@ const (
 {{template "ntp" .NTPServers}}
 runcmd:
 {{- template "commands" .PreRKE2Commands }}
-  - {{ if .AirGapped }}INSTALL_RKE2_ARTIFACT_PATH=/opt/rke2-artifacts sh /opt/install.sh{{ else }}'curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=%[1]s sh -s - server'{{ end }}
+  - {{ .RKE2Command }}'
   - 'systemctl enable rke2-server.service'
   - 'systemctl start rke2-server.service'
   - 'mkdir /run/cluster-api' 
@@ -49,8 +49,12 @@ func NewInitControlPlane(input *ControlPlaneInput) ([]byte, error) {
 	input.WriteFiles = append(input.WriteFiles, input.Certificates.AsFiles()...)
 	input.WriteFiles = append(input.WriteFiles, input.ConfigFile)
 	input.SentinelFileCommand = sentinelFileCommand
-	controlPlaneCloudJoinWithVersion := fmt.Sprintf(controlPlaneCloudInit, input.RKE2Version)
-	userData, err := generate("InitControlplane", controlPlaneCloudJoinWithVersion, input)
+	if input.AirGapped {
+		input.RKE2Command = "INSTALL_RKE2_ARTIFACT_PATH=/opt/rke2-artifacts sh /opt/install.sh"
+	} else {
+		input.RKE2Command = fmt.Sprintf("curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=%[1]s sh -s - server", input.RKE2Version)
+	}
+	userData, err := generate("InitControlplane", controlPlaneCloudInit, input)
 	if err != nil {
 		return nil, err
 	}
