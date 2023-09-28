@@ -223,8 +223,8 @@ func (r *RKE2ControlPlaneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	err = c.Watch(
-		&source.Kind{Type: &clusterv1.Cluster{}},
-		handler.EnqueueRequestsFromMapFunc(r.ClusterToRKE2ControlPlane),
+		source.Kind(mgr.GetCache(), &clusterv1.Cluster{}),
+		&handler.EnqueueRequestForObject{},
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed adding Watch for Clusters to controller manager")

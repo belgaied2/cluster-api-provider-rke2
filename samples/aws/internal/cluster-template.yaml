@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ${CABPR_NAMESPACE}
+  name: ${CLUSTER_NAMESPACE}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: "${CLUSTER_NAME}"
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   controlPlaneRef:
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
@@ -22,7 +22,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
 kind: AWSCluster
 metadata:
   name: "${CLUSTER_NAME}"
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   region: "${AWS_REGION}"
   sshKeyName: "${AWS_SSH_KEY_NAME}"
@@ -33,9 +33,9 @@ apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
 kind: RKE2ControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec: 
-  replicas: ${CABPR_CP_REPLICAS}
+  replicas: ${CLUSTER_CP_REPLICAS}
   agentConfig:
     version: ${KUBERNETES_VERSION}+rke2r1
   serverConfig:
@@ -51,7 +51,7 @@ kind: AWSMachineTemplate
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
 metadata:
   name: "${CLUSTER_NAME}-control-plane"
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   template:
     spec:
@@ -65,10 +65,10 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   name: "${CLUSTER_NAME}-md-0"
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   clusterName: "${CLUSTER_NAME}"
-  replicas: ${CABPR_WK_REPLICAS}
+  replicas: ${CLUSTER_WK_REPLICAS}
   selector:
     matchLabels:
   template:
@@ -89,7 +89,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
 kind: AWSMachineTemplate
 metadata:
   name: "${CLUSTER_NAME}-md-0"
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   template:
     spec:
@@ -102,7 +102,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1alpha1
 kind: RKE2ConfigTemplate
 metadata:
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
   name: ${CLUSTER_NAME}-md-0
 spec: 
   template:

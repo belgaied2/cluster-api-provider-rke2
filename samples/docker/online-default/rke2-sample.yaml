@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ${CABPR_NAMESPACE}
+  name: ${CLUSTER_NAMESPACE}
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster 
 metadata:
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
   name: ${CLUSTER_NAME} 
 spec:
   clusterNetwork:
@@ -30,15 +30,68 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerCluster
 metadata:
   name: ${CLUSTER_NAME}
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
+spec:
+  loadBalancer:
+    customHAProxyConfigTemplateRef: 
+      name: ${CLUSTER_NAME}-haproxy-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${CLUSTER_NAME}-haproxy-config
+  namespace: ${CLUSTER_NAMESPACE}
+data:
+  value: |
+    global
+      log /dev/log local0
+      log /dev/log local1 notice
+      daemon
+    defaults
+      log global
+      mode tcp
+      option dontlognull
+      # TODO: tune these
+      timeout connect 5000
+      timeout client 50000
+      timeout server 50000
+    frontend stats
+      bind *:8404
+      stats enable
+      stats uri /
+      stats refresh 10s
+    frontend control-plane
+      bind *:{{ .FrontendControlPlanePort }}
+      {{ if .IPv6 -}}
+      bind :::{{ .FrontendControlPlanePort }};
+      {{- end }}
+      default_backend kube-apiservers
+    backend kube-apiservers
+      option httpchk GET /healthz
+      http-check expect status 401
+      {{range $server, $address := .BackendServers}}
+      server {{ $server }} {{ $address }}:6443 check check-ssl verify none
+      {{- end}}
+    frontend rke2-join
+      bind *:9345
+      {{ if .IPv6 -}}
+      bind :::9345;
+      {{- end }}
+      default_backend rke2-servers
+    backend rke2-servers
+      option httpchk GET /v1-rke2/readyz
+      http-check expect status 403
+      {{range $server, $address := .BackendServers}}
+      server {{ $server }} {{ $address }}:9345 check check-ssl verify none
+      {{- end}}
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1alpha1
 kind: RKE2ControlPlane
 metadata:
   name: ${CLUSTER_NAME}-control-plane
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec: 
-  replicas: ${CABPR_CP_REPLICAS}
+  replicas: ${CLUSTER_CP_REPLICAS}
   agentConfig:
     version: ${KUBERNETES_VERSION}+rke2r1
   serverConfig:
@@ -53,7 +106,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
   name: controlplane
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   template:
     spec: {} 
@@ -62,10 +115,10 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   name: worker-md-0
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   clusterName: ${CLUSTER_NAME}
-  replicas: ${CABPR_WK_REPLICAS}
+  replicas: ${CLUSTER_WK_REPLICAS}
   selector:
     matchLabels:
       cluster.x-k8s.io/cluster-name: ${CLUSTER_NAME}
@@ -78,18 +131,18 @@ spec:
           apiVersion: bootstrap.cluster.x-k8s.io/v1alpha1
           kind: RKE2ConfigTemplate
           name: ${CLUSTER_NAME}-agent
-          namespace: ${CABPR_NAMESPACE}
+          namespace: ${CLUSTER_NAMESPACE}
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: DockerMachineTemplate
         name: worker
-        namespace: ${CABPR_NAMESPACE}
+        namespace: ${CLUSTER_NAMESPACE}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: DockerMachineTemplate
 metadata:
   name: worker
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
 spec:
   template:
     spec: {} 
@@ -97,7 +150,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1alpha1
 kind: RKE2ConfigTemplate
 metadata:
-  namespace: ${CABPR_NAMESPACE}
+  namespace: ${CLUSTER_NAMESPACE}
   name: ${CLUSTER_NAME}-agent
 spec: 
   template:
