@@ -8,6 +8,7 @@ on:
 env:
   TAG: ${{ github.ref_name }}
   REGISTRY: ghcr.io
+  ORG: ${{ github.repository_owner }}
 
 jobs:
   build:
@@ -31,9 +32,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build docker image
-      run: make docker-build-all TAG=${{ env.TAG }}
+      run: make docker-build-all TAG=${{ env.TAG }} ORG=${{ env.ORG }}
     - name: Push docker image
-      run: make docker-push-all TAG=${{ env.TAG }} PROD_REGISTRY=${{ env.REGISTRY }}
+      run: make docker-push-all TAG=${{ env.TAG }} PROD_REGISTRY=${{ env.REGISTRY }} ORG=${{ env.ORG }}
   release:
     runs-on: ubuntu-latest
     permissions:
@@ -50,7 +51,7 @@ jobs:
         go-version: '=1.19.4'
     - name: Update manifests
       run: |
-        make release RELEASE_TAG=${{ env.TAG }} 
+        make release RELEASE_TAG=${{ env.TAG }} ORG=${{ env.ORG }} 
     - name: Release
       uses: softprops/action-gh-release@v1
       with:
